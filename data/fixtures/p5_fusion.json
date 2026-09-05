@@ -1,0 +1,310 @@
+{
+  "paper": "P5 Cross-modal detection fusion and multi-analytics alert deduplication",
+  "results": [
+    {
+      "experiment": "E5.1_fusion_baselines",
+      "detections": 59984,
+      "incidents": 12000,
+      "dual_tagged_incidents": 4859,
+      "rows": [
+        {
+          "alerts_emitted": 59984,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 0,
+          "distinct_incident_recall": 1.0,
+          "redundant_alerts": 47984,
+          "alerts_per_incident": 4.998666666666667,
+          "method": "naive_or",
+          "alert_reduction_vs_naive": 0.0
+        },
+        {
+          "alerts_emitted": 15788,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 438,
+          "distinct_incident_recall": 0.9635,
+          "redundant_alerts": 4226,
+          "alerts_per_incident": 1.3156666666666668,
+          "method": "per_modality_dedup",
+          "alert_reduction_vs_naive": 0.736796479061083
+        },
+        {
+          "alerts_emitted": 7130,
+          "incidents_covered": 4377,
+          "incident_recall": 0.36475,
+          "incidents_masked_by_over_collapse": 198,
+          "distinct_incident_recall": 0.34825,
+          "redundant_alerts": 2951,
+          "alerts_per_incident": 1.6289696138907928,
+          "method": "confidence_voting",
+          "alert_reduction_vs_naive": 0.8811349693251533
+        },
+        {
+          "alerts_emitted": 11626,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 384,
+          "distinct_incident_recall": 0.968,
+          "redundant_alerts": 10,
+          "alerts_per_incident": 0.9688333333333333,
+          "method": "entity_agnostic_collapse",
+          "alert_reduction_vs_naive": 0.8061816484395838
+        }
+      ]
+    },
+    {
+      "experiment": "E5.2_collapse_window_sweep",
+      "median_geometric_window_s": 3.659939506853932,
+      "deployed_window_s": 120,
+      "rows": [
+        {
+          "alerts_emitted": 59984,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 0,
+          "distinct_incident_recall": 1.0,
+          "redundant_alerts": 47984,
+          "alerts_per_incident": 4.998666666666667,
+          "window_s": 0
+        },
+        {
+          "alerts_emitted": 12962,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 19,
+          "distinct_incident_recall": 0.9984166666666666,
+          "redundant_alerts": 981,
+          "alerts_per_incident": 1.0801666666666667,
+          "window_s": 5
+        },
+        {
+          "alerts_emitted": 11961,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 47,
+          "distinct_incident_recall": 0.9960833333333333,
+          "redundant_alerts": 8,
+          "alerts_per_incident": 0.99675,
+          "window_s": 15
+        },
+        {
+          "alerts_emitted": 11915,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 87,
+          "distinct_incident_recall": 0.99275,
+          "redundant_alerts": 2,
+          "alerts_per_incident": 0.9929166666666667,
+          "window_s": 30
+        },
+        {
+          "alerts_emitted": 11844,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 164,
+          "distinct_incident_recall": 0.9863333333333333,
+          "redundant_alerts": 8,
+          "alerts_per_incident": 0.987,
+          "window_s": 60
+        },
+        {
+          "alerts_emitted": 11626,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 384,
+          "distinct_incident_recall": 0.968,
+          "redundant_alerts": 10,
+          "alerts_per_incident": 0.9688333333333333,
+          "window_s": 120
+        },
+        {
+          "alerts_emitted": 11345,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 672,
+          "distinct_incident_recall": 0.944,
+          "redundant_alerts": 17,
+          "alerts_per_incident": 0.9454166666666667,
+          "window_s": 180
+        },
+        {
+          "alerts_emitted": 11105,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 904,
+          "distinct_incident_recall": 0.9246666666666666,
+          "redundant_alerts": 9,
+          "alerts_per_incident": 0.9254166666666667,
+          "window_s": 240
+        },
+        {
+          "alerts_emitted": 10378,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 1630,
+          "distinct_incident_recall": 0.8641666666666666,
+          "redundant_alerts": 8,
+          "alerts_per_incident": 0.8648333333333333,
+          "window_s": 480
+        },
+        {
+          "alerts_emitted": 9288,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 2716,
+          "distinct_incident_recall": 0.7736666666666666,
+          "redundant_alerts": 4,
+          "alerts_per_incident": 0.774,
+          "window_s": 900
+        },
+        {
+          "alerts_emitted": 9012,
+          "incidents_covered": 12000,
+          "incident_recall": 1.0,
+          "incidents_masked_by_over_collapse": 2988,
+          "distinct_incident_recall": 0.751,
+          "redundant_alerts": 0,
+          "alerts_per_incident": 0.751,
+          "window_s": 1800
+        }
+      ]
+    },
+    {
+      "experiment": "E5.3_geometric_window_per_camera",
+      "min_s": 1.2714313142363454,
+      "median_s": 3.664564779464551,
+      "max_s": 9.627927204173009,
+      "deployed_constant_s": 120,
+      "cameras_where_constant_over_collapses": 200,
+      "cameras": 200,
+      "rows": [
+        {
+          "camera_id": "CAM00000",
+          "fov_depth_m": 41.7,
+          "speed_limit_kmh": 60.0,
+          "geometric_window_s": 2.5
+        },
+        {
+          "camera_id": "CAM00001",
+          "fov_depth_m": 36.1,
+          "speed_limit_kmh": 100.0,
+          "geometric_window_s": 1.3
+        },
+        {
+          "camera_id": "CAM00002",
+          "fov_depth_m": 109.5,
+          "speed_limit_kmh": 60.0,
+          "geometric_window_s": 6.57
+        },
+        {
+          "camera_id": "CAM00003",
+          "fov_depth_m": 60.7,
+          "speed_limit_kmh": 40.0,
+          "geometric_window_s": 5.46
+        },
+        {
+          "camera_id": "CAM00004",
+          "fov_depth_m": 52.2,
+          "speed_limit_kmh": 100.0,
+          "geometric_window_s": 1.88
+        },
+        {
+          "camera_id": "CAM00005",
+          "fov_depth_m": 40.0,
+          "speed_limit_kmh": 40.0,
+          "geometric_window_s": 3.6
+        },
+        {
+          "camera_id": "CAM00006",
+          "fov_depth_m": 79.7,
+          "speed_limit_kmh": 80.0,
+          "geometric_window_s": 3.59
+        },
+        {
+          "camera_id": "CAM00007",
+          "fov_depth_m": 42.7,
+          "speed_limit_kmh": 100.0,
+          "geometric_window_s": 1.54
+        },
+        {
+          "camera_id": "CAM00008",
+          "fov_depth_m": 107.0,
+          "speed_limit_kmh": 40.0,
+          "geometric_window_s": 9.63
+        },
+        {
+          "camera_id": "CAM00009",
+          "fov_depth_m": 88.7,
+          "speed_limit_kmh": 60.0,
+          "geometric_window_s": 5.32
+        },
+        {
+          "camera_id": "CAM00010",
+          "fov_depth_m": 81.5,
+          "speed_limit_kmh": 100.0,
+          "geometric_window_s": 2.93
+        },
+        {
+          "camera_id": "CAM00011",
+          "fov_depth_m": 74.1,
+          "speed_limit_kmh": 100.0,
+          "geometric_window_s": 2.67
+        }
+      ]
+    },
+    {
+      "experiment": "E5.4_cross_modal_contribution",
+      "rows": [
+        {
+          "dual_tagged_share": 0.0,
+          "per_modality_alerts": 11654,
+          "entity_agnostic_alerts": 11654,
+          "extra_reduction": 0.0,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        },
+        {
+          "dual_tagged_share": 0.15,
+          "per_modality_alerts": 12990,
+          "entity_agnostic_alerts": 11633,
+          "extra_reduction": 0.10446497305619706,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        },
+        {
+          "dual_tagged_share": 0.3,
+          "per_modality_alerts": 14415,
+          "entity_agnostic_alerts": 11671,
+          "extra_reduction": 0.1903572667360388,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        },
+        {
+          "dual_tagged_share": 0.45,
+          "per_modality_alerts": 15715,
+          "entity_agnostic_alerts": 11605,
+          "extra_reduction": 0.2615335666560611,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        },
+        {
+          "dual_tagged_share": 0.7,
+          "per_modality_alerts": 17973,
+          "entity_agnostic_alerts": 11637,
+          "extra_reduction": 0.3525287931897847,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        },
+        {
+          "dual_tagged_share": 1.0,
+          "per_modality_alerts": 20614,
+          "entity_agnostic_alerts": 11644,
+          "extra_reduction": 0.4351411661977297,
+          "per_modality_recall": 1.0,
+          "entity_agnostic_recall": 1.0
+        }
+      ]
+    }
+  ]
+}

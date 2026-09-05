@@ -1,0 +1,22 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs,hyperref,graphicx,amsmath}
+\title{How Long Is a Presence? The Geometric 120s Window Is Wrong}
+\author{Amit Dua\\Yushu Excellence Technologies Pvt.\ Ltd.}
+\date{2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+Own synthetic experiments put the knee at 15-30 s; geometric FOV/speed is 1.3-9.6 s. Do not submit the 120 s derivation.
+\end{abstract}
+\section{Status}
+Tier C. Target venue: Hold / IEEE TCSVT after reframe.
+This repository is the paper package. Synthetic experiments live in \texttt{code/prresearch}.
+Headline numbers, if any, must be labelled MEASURED or DESIGN TARGET.
+\section{Reproduction}
+\begin{verbatim}
+cd code
+pip install -r requirements.txt
+python -m pytest -q
+\end{verbatim}
+\end{document}

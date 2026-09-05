@@ -1,22 +1,373 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{booktabs,hyperref,graphicx,amsmath}
-\title{How Long Is a Presence? The Geometric 120s Window Is Wrong}
-\author{Amit Dua\\Yushu Excellence Technologies Pvt.\ Ltd.}
+\usepackage{booktabs,hyperref,graphicx,amsmath,amssymb}
+\usepackage[numbers]{natbib}
+
+\newcommand{\synth}{\textsc{synthetic}}
+
+\title{How Long Is a Presence?\\Refuting a Geometric Derivation of the Alert\\Collapse Window in Multi-Analytics CCTV}
+\author{Amit Dua\\Yushu Excellence Technologies Pvt.\ Ltd.\\\texttt{mail.amitduabits@gmail.com}}
 \date{2026}
+
 \begin{document}
 \maketitle
+
 \begin{abstract}
-Own synthetic experiments put the knee at 15-30 s; geometric FOV/speed is 1.3-9.6 s. Do not submit the 120 s derivation.
+A CCTV platform running several analytics over the same scene emits one alert per
+detection unless it collapses them. The collapse predicate --- same entity, same
+window --- is standard: it is \citet{debar2001aggregation}'s aggregation predicate
+under a normalised record schema of the IDMEF \citep{idmef2007} and OCSF
+\citep{ocsf} lineage, evaluated over keyed session windows in the sense of
+\citet{akidau2015dataflow}. The predicate is not our contribution and we do not
+claim it. The open parameter is the window $W$, and our deployment set it to
+$120$\,s with a derivation: camera field-of-view depth divided by permitted speed.
+
+\textbf{That derivation is wrong, and our own data refutes it.} Computed per
+camera across a 200-camera estate, the geometric dwell time is $1.27$ to
+$9.63$\,s with a median of $3.66$\,s --- one and a half orders of magnitude below
+the deployed constant. The deployed $120$\,s over-collapses relative to its own
+stated justification at every camera in the estate ($200$ of $200$). Worse, the
+geometric quantity is not the right one: what the window must span is the interval
+between successive \emph{observations} of an entity, which includes revisits and
+re-detections, not the time to traverse one field of view.
+
+Measured on the operating curve, the knee sits at $15$--$30$\,s. Moving from
+$15$\,s to $120$\,s buys a further $2.8\%$ reduction in alerts and costs $337$
+additional masked incidents, taking distinct-incident recall from $0.9961$ to
+$0.9680$. We give the corrected procedure: choose $W$ from the
+inter-observation-time distribution by a cost-weighted operating point, with
+\citet{satopaa2011kneedle} as the parameter-free default. Separately, we confirm
+that an entity-keyed predicate spanning modalities beats per-modality
+deduplication by $10.5\%$ to $43.5\%$ as the dual-tagged incident share rises from
+$0.15$ to $1.0$, at no recall cost, and that a confidence-voting alternative
+achieves the largest raw reduction ($88.1\%$) only by dropping $63.5\%$ of
+incidents and is not a usable operating point.
+
+All results are \synth{}, from a seeded generator over $59{,}984$ detections and
+$12{,}000$ incidents. \S\ref{sec:limits} states what real operator-marked ground
+truth must show.
 \end{abstract}
-\section{Status}
-Tier C. Target venue: Hold / IEEE TCSVT after reframe.
-This repository is the paper package. Synthetic experiments live in \texttt{code/prresearch}.
-Headline numbers, if any, must be labelled MEASURED or DESIGN TARGET.
-\section{Reproduction}
+
+\section{Introduction}
+
+Run automatic number-plate recognition, face matching and region-occupancy
+detection over the same camera and the same vehicle generates three detections a
+second. Emit one alert each and the control room receives five alerts per
+incident; the literature on alert fatigue \citep{tariq2025alertfatigue,
+alahmadi2022falsepositives, sundaramurthy2015burnout} and the older process-control
+work on alarm floods \citep{wang2016alarmoverview, isa182, eemua191} is unanimous
+that this is the failure mode that ends the deployment.
+
+The fix is to collapse: emit one alert per entity per window. The question that
+decides whether the fix works is how long the window is. Too short and the
+operator gets duplicates; too long and a genuinely new incident involving the same
+entity is masked by a still-open alert. This is a two-sided error and it has an
+operating curve.
+
+Our deployment chose $W = 120$\,s and documented a derivation for it: a camera's
+field of view is a few tens of metres deep, permitted speed is a few tens of
+km/h, so a vehicle is present for on the order of a minute or two. This paper
+reports that the derivation does not survive contact with the estate's own
+parameters, explains why the geometric quantity is the wrong one in principle as
+well as in magnitude, and replaces it with a procedure.
+
+\subsection{What is and is not claimed}
+
+Not claimed: the normalised alert record (IDMEF \citep{idmef2007}, OCSF
+\citep{ocsf}, JDL level-2 common referencing \citep{steinberg1999jdl,
+hall1997introduction}); the same-entity-same-window aggregation predicate
+\citep{debar2001aggregation, julisch2003clustering, valdes2001probabilistic};
+keyed session windowing \citep{akidau2015dataflow, cugola2012processing}; or
+duplicate detection as a discipline \citep{fellegi1969theory,
+elmagarmid2007duplicate}. All of this is background and \S\ref{sec:bg} says so in
+its first sentence.
+
+Claimed: (i) the geometric derivation of $W$ is refuted by the estate's own
+geometry, quantitatively (\S\ref{sec:refute}); (ii) the measured knee is
+$15$--$30$\,s and the deployed value sits far past it, with the cost quantified
+(\S\ref{sec:eval}); (iii) a defensible replacement procedure for choosing $W$
+(\S\ref{sec:choose}); (iv) the cross-modal entity-keyed predicate's marginal value
+over per-modality deduplication, measured against the dual-tagging rate
+(\S\ref{sec:crossmodal}).
+
+\section{Background, all of it established}
+\label{sec:bg}
+
+\emph{Nothing in this section is a contribution.} Alert normalisation into a
+common record with entity, time, source and confidence fields is IDMEF
+\citep{idmef2007} and, in current practice, OCSF \citep{ocsf}; the fusion framing
+is JDL level 2 \citep{steinberg1999jdl}, surveyed by
+\citet{khaleghi2013multisensor}. Aggregating alerts that share a key within a
+time window is \citet{debar2001aggregation}, refined by
+\citet{julisch2003clustering} and \citet{ning2002constructing}, with a
+probabilistic variant in \citet{valdes2001probabilistic}. Evaluating such a
+predicate over unbounded streams with per-key session windows is
+\citet{akidau2015dataflow}. Session-gap estimation from inter-event times has its
+own literature in web analytics \citep{catledge1995characterizing,
+halfaker2015session, meiss2009session}, and in process control the same problem is
+the alarm dead-band and delay-timer design question
+\citep{adnan2011detectiondelay, afzal2018timedeadbands, wang2022delaytimers}.
+
+We adopt all of it. The gap is that none of these sources tells a CCTV operator
+what number to type in, and the one derivation our deployment invented for itself
+is wrong.
+
+\section{The collapse predicate as deployed}
+
+A detection is a tuple $(e, m, c, t, s)$: entity key, modality, camera, timestamp,
+score. The predicate is entity-keyed and modality-agnostic:
+
+\begin{quote}
+Emit an alert for detection $d$ iff no alert with the same entity key $e$ is open;
+an alert opened at $t_0$ is open over $[t_0, t_0 + W)$.
+\end{quote}
+
+Window semantics are \emph{anchored}, not merging: a detection inside an open
+window does not extend it. This matters and is under-reported in the literature.
+Merging semantics turn a stream of detections at a busy junction into one
+unbounded alert; anchored semantics bound the suppression at $W$ by construction.
+Every number in this paper is under anchored semantics.
+
+Two error modes follow. A \emph{redundant alert} is a second alert for an incident
+already alerted. A \emph{masked incident} is a distinct incident that produced no
+alert because an unrelated earlier incident with the same entity key held the
+window open. We report distinct-incident recall for the second, because plain
+incident recall is $1.0$ everywhere and hides the failure.
+
+\section{Why the geometric derivation fails}
+\label{sec:refute}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Quantity} & \textbf{Value} \\
+\midrule
+Geometric dwell, minimum over estate & 1.27\,s \\
+Geometric dwell, median over estate & 3.66\,s \\
+Geometric dwell, maximum over estate & 9.63\,s \\
+Deployed constant $W$ & 120\,s \\
+Cameras where the constant exceeds the geometric value & 200 of 200 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Geometric window per camera against the deployed constant
+(\synth, 200 cameras).} $W_{\text{geom}} = \text{FOV depth} / \text{permitted
+speed}$. The deployed constant exceeds its own stated derivation by a factor of
+$12$ at the most generous camera and $94$ at the tightest.}
+\label{tab:geom}
+\end{table}
+
+Table~\ref{tab:geom} is the refutation. Field-of-view depth divided by permitted
+speed gives seconds, not minutes, at every camera in the estate. If the deployment
+had applied its own stated rule it would have set $W$ between $1$ and $10$\,s, and
+per camera rather than globally. It did not; it set $120$\,s. The derivation was
+therefore not the reason for the value, whatever the design document says.
+
+The magnitude error is the smaller problem. The conceptual error is that dwell
+time is not the quantity the window must span. The window exists to suppress
+\emph{repeat observations of the same entity that belong to the same operational
+event}. Those arise from (a) multiple analytics firing on one pass, (b) repeated
+detections across frames during one pass, and (c) the entity leaving and returning
+--- circling a block, stopping and restarting, being observed by an adjacent
+camera whose alerts share the entity key. Case (c) dominates the tail and has
+nothing to do with how long one field of view is. A derivation from geometry
+cannot see it. The correct input is the empirical inter-observation-time
+distribution.
+
+\section{Choosing $W$ properly}
+\label{sec:choose}
+
+Four families of method apply, and the choice among them is a value judgement that
+should be made explicitly rather than buried in a constant.
+
+\textbf{Cost-weighted operating point.} Treat window selection as threshold
+selection on a two-sided error curve \citep{fawcett2006roc}. Assign a cost
+$\lambda_r$ to a redundant alert (operator seconds) and $\lambda_m$ to a masked
+incident (a missed event), and minimise $\lambda_r R(W) + \lambda_m M(W)$. This is
+the framing we lead with, because it makes the deployment's values legible and
+lets another deployment substitute its own. \citet{axelsson2000baserate} is the
+reason the two costs are not comparable by intuition.
+
+\textbf{Mixture crossover.} Fit a two-component mixture to inter-observation times
+--- within-event and between-event --- and set $W$ at the posterior crossover. This
+is the web-analytics session-gap method \citep{catledge1995characterizing,
+meiss2009session} and is the most principled where the two populations are
+separable.
+
+\textbf{Knee detection.} Apply \citet{satopaa2011kneedle} to the
+reduction-versus-masking curve. Parameter-free, and the right default where no
+cost model exists.
+
+\textbf{Spec-based timer design.} The process-control approach
+\citep{adnan2011detectiondelay, afzal2018timedeadbands, wang2022delaytimers}: set
+the dead-band from a specified maximum acceptable detection delay. Appropriate
+where a regulator states the delay bound.
+
+All four are defensible. Dividing a distance by a speed is not one of them.
+
+\section{Evaluation}
+\label{sec:eval}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{rrrrr}
+\toprule
+\textbf{$W$ (s)} & \textbf{Alerts} & \textbf{Reduction vs.\ $W{=}0$} & \textbf{Masked incidents} & \textbf{Distinct-incident recall} \\
+\midrule
+0    & 59{,}984 & ---     & 0     & 1.0000 \\
+5    & 12{,}962 & 78.4\% & 19    & 0.9984 \\
+15   & 11{,}961 & 80.1\% & 47    & 0.9961 \\
+30   & 11{,}915 & 80.1\% & 87    & 0.9928 \\
+60   & 11{,}844 & 80.3\% & 164   & 0.9863 \\
+120  & 11{,}626 & 80.6\% & 384   & 0.9680 \\
+180  & 11{,}345 & 81.1\% & 672   & 0.9440 \\
+240  & 11{,}105 & 81.5\% & 904   & 0.9247 \\
+480  & 10{,}378 & 82.7\% & 1{,}630 & 0.8642 \\
+900  & 9{,}288  & 84.5\% & 2{,}716 & 0.7737 \\
+1800 & 9{,}012  & 85.0\% & 2{,}988 & 0.7510 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{The operating curve (\synth, $59{,}984$ detections,
+$12{,}000$ incidents).} Redundant alerts are already down to $8$ at $W{=}15$\,s
+from $47{,}984$ at $W{=}0$. Everything bought beyond $15$\,s is bought from
+recall.}
+\label{tab:sweep}
+\end{table}
+
+Table~\ref{tab:sweep} is the paper's central result. Read it in two parts.
+
+\textbf{Below the knee, collapse is nearly free.} Going from $0$ to $15$\,s
+removes $47{,}976$ of the $47{,}984$ redundant alerts and masks $47$ incidents:
+$80.1\%$ fewer alerts for $0.4\%$ of distinct-incident recall. No deployment
+should decline this.
+
+\textbf{Above the knee, the curve is almost flat in the benefit and steep in the
+cost.} From $15$\,s to $120$\,s, alerts fall by a further $335$ ($2.8\%$ of the
+remainder, $0.5$ percentage points of total reduction) while masked incidents rise
+from $47$ to $384$, an eightfold increase. Recall drops from $0.9961$ to $0.9680$.
+The deployed value therefore sits well past the knee: it pays $337$ masked
+incidents for a reduction an operator would not notice. At $1{,}800$\,s the trade
+is grotesque --- $85.0\%$ reduction against $0.7510$ recall --- but the shape of the
+curve is already established by $120$\,s.
+
+\citet{satopaa2011kneedle} applied to the (reduction, masking) curve returns a knee
+in $15$--$30$\,s, which is where we recommend the deployment move, subject to the
+cost weighting in \S\ref{sec:choose}.
+
+\subsection{Cross-modal collapse against per-modality deduplication}
+\label{sec:crossmodal}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Method} & \textbf{Alerts} & \textbf{Reduction} & \textbf{Incident recall} & \textbf{Distinct recall} & \textbf{Alerts/incident} \\
+\midrule
+naive (one per detection) & 59{,}984 & ---     & 1.000 & 1.000 & 5.00 \\
+per-modality dedup        & 15{,}788 & 73.7\% & 1.000 & 0.9635 & 1.32 \\
+confidence voting         & 7{,}130  & 88.1\% & \textbf{0.365} & 0.3483 & 1.63 \\
+entity-agnostic collapse  & 11{,}626 & 80.6\% & 1.000 & 0.9680 & 0.97 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Collapse strategies (\synth), $W = 120$\,s.} Confidence voting
+achieves the largest reduction by discarding $63.5\%$ of incidents entirely. It is
+reported because it is the obvious alternative, and rejected because no control
+room can run at $0.365$ incident recall.}
+\label{tab:baselines}
+\end{table}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{rrrr}
+\toprule
+\textbf{Dual-tagged share} & \textbf{Per-modality alerts} & \textbf{Entity-agnostic alerts} & \textbf{Extra reduction} \\
+\midrule
+0.00 & 11{,}654 & 11{,}654 & 0.0\% \\
+0.15 & 12{,}990 & 11{,}633 & 10.5\% \\
+0.30 & 14{,}415 & 11{,}671 & 19.0\% \\
+0.45 & 15{,}715 & 11{,}605 & 26.2\% \\
+0.70 & 17{,}973 & 11{,}637 & 35.3\% \\
+1.00 & 20{,}614 & 11{,}644 & 43.5\% \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Marginal value of crossing modalities (\synth).} Recall is
+$1.000$ for both methods at every share. The entity-agnostic column is flat
+because it is insensitive to how many modalities tagged the incident; that
+insensitivity is the entire benefit.}
+\label{tab:crossmodal}
+\end{table}
+
+Table~\ref{tab:crossmodal} isolates the one design decision in the predicate that
+is genuinely ours to defend: keying on the entity rather than on
+(entity, modality). The benefit is exactly proportional to how often an incident is
+seen by more than one analytic, from zero at $0\%$ dual tagging to $43.5\%$ at
+$100\%$. Our estate runs at roughly $40\%$ dual tagging
+($4{,}859$ of $12{,}000$ incidents), placing the real benefit near $24\%$. A
+deployment running one analytic per camera should not adopt this and gains
+nothing from it; that conditional is the honest form of the claim.
+
+\section{Related work}
+
+Covered in \S\ref{sec:bg} and conceded there. The one comparison we owe is
+\citet{valdes2001probabilistic}, whose weighted-similarity aggregation is the
+principal alternative to a hard entity key: it fuses on graded feature agreement
+rather than exact match. It would handle entity-key errors --- a misread plate ---
+which our predicate cannot, and a deployment with noisy keys should prefer it. We
+do not claim superiority over it; our estate's keys come from ANPR with a
+confidence gate, and exact matching is adequate there.
+\citet{cheng2013smithwaterman} and \citet{ye2022reid} are the alternatives for
+graded matching across cameras.
+
+\section{Limitations}
+\label{sec:limits}
+
+\begin{enumerate}
+\item \textbf{Synthetic ground truth.} ``Distinct incident'' is a label our
+generator emits. In an estate, whether two appearances of one vehicle forty
+seconds apart are one incident or two is an operator judgement, and the whole
+curve in Table~\ref{tab:sweep} depends on that judgement. The replication that
+matters is operator-marked incident boundaries on real footage; if operators mark
+a longer typical event than our generator, the knee moves right and $120$\,s may
+be defensible on grounds we did not test. The geometric refutation in
+\S\ref{sec:refute} does not depend on this, since it compares the deployment
+against its own stated rule.
+\item \textbf{Anchored semantics.} Under merging semantics all of these numbers
+change and the masking cost grows without bound.
+\item \textbf{One estate, one entity-key source.} Key errors are not modelled.
+\item \textbf{A single global $W$.} Table~\ref{tab:geom} shows the geometric
+quantity varies $7.6\times$ across cameras. Whether a per-camera $W$ pays is not
+answered here.
+\item \textbf{Case grouping is a different problem.} An operator may want all
+alerts for one entity grouped in the interface for hours while still being
+notified of each. That is a presentation decision and it is arguably the right
+answer to the fatigue problem; this paper addresses suppression, not grouping.
+\end{enumerate}
+
+\section{Conclusion}
+
+The collapse predicate is not new and we do not claim it. Its window is the
+parameter that decides whether it helps, and the derivation our deployment used
+for that window --- field-of-view depth over permitted speed --- is refuted by the
+estate's own camera parameters at all $200$ cameras, by a factor of $12$ to $94$,
+and is measuring the wrong quantity besides. On the operating curve the knee is at
+$15$--$30$\,s; the deployed $120$\,s pays $337$ additional masked incidents for a
+$2.8\%$ further reduction in alerts. We recommend deployments derive $W$ from the
+inter-observation-time distribution under an explicit cost weighting, publish the
+weighting, and stop deriving it from geometry.
+
+\section*{Reproduction}
+
 \begin{verbatim}
 cd code
 pip install -r requirements.txt
 python -m pytest -q
+python -m prresearch.p5_fusion.experiment
 \end{verbatim}
+
+Fixed seeds; \texttt{results/p5\_fusion.json} is byte-identical across runs.
+Code and data: \url{https://github.com/amitduabits/PRAHARI-P5-EventSchema}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
 \end{document}

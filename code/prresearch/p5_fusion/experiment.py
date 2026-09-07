@@ -16,6 +16,14 @@ from pathlib import Path
 
 import numpy as np
 
+from prresearch.p5_fusion.window_model import (
+    cost_weighted_window,
+    debar_wespi_window,
+    fit_lognormal_mixture,
+    inter_observation_times,
+    kneedle,
+    spread_rule,
+)
 from prresearch.p5_fusion.collapse import (
     ConfidenceVoting,
     EntityAgnosticCollapse,
@@ -170,11 +178,77 @@ def e5_4_cross_modal(n_incidents: int = 12000) -> dict:
     return {"experiment": "E5.4_cross_modal_contribution", "rows": rows}
 
 
+def e5_5_empirical_window(n_incidents: int = 12000) -> dict:
+    """The replacement for the geometric derivation.
+
+    A fine sweep gives the two-sided error curve; four estimators then pick a
+    window from it.  The curve is the contribution, because it is what lets a
+    deployment with different costs pick a different point.
+    """
+    events, meta, _ = synth_detections(n_incidents, dual_share=0.45, seed_name="p5:main")
+    iot = inter_observation_times(events)
+
+    windows = [0, 2, 3, 5, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 90, 120,
+               180, 240, 360, 480, 720, 900, 1200, 1800]
+    rows = []
+    base = None
+    for w in windows:
+        sc = score(EntityAgnosticCollapse(float(w)).run(events), n_incidents)
+        if base is None:
+            base = sc["alerts_emitted"]
+        rows.append(
+            {
+                "window_s": w,
+                "alerts_emitted": sc["alerts_emitted"],
+                "suppression": 1.0 - sc["alerts_emitted"] / base,
+                "redundant_alerts": sc["redundant_alerts"],
+                "redundant_rate": sc["redundant_alerts"] / n_incidents,
+                "incidents_masked": sc["incidents_masked_by_over_collapse"],
+                "masked_rate": sc["incidents_masked_by_over_collapse"] / n_incidents,
+                "distinct_incident_recall": sc["distinct_incident_recall"],
+            }
+        )
+
+    mixture = fit_lognormal_mixture(iot["pooled"])
+    knee = kneedle([r["window_s"] for r in rows], [r["suppression"] for r in rows])
+    costs = {
+        f"{lr}:{lm}": cost_weighted_window(rows, lr, lm)
+        for lr, lm in ((1.0, 1.0), (1.0, 10.0), (1.0, 100.0), (10.0, 1.0))
+    }
+    return {
+        "experiment": "E5.5_empirical_window_model",
+        "deployed_window_s": 120,
+        "iot_summary": {
+            "n_pooled": int(iot["pooled"].size),
+            "n_within_event": int(iot["within_event"].size),
+            "n_between_event": int(iot["between_event"].size),
+            "within_event_median_s": float(np.median(iot["within_event"])),
+            "within_event_q99_s": float(np.percentile(iot["within_event"], 99)),
+            "between_event_median_s": float(np.median(iot["between_event"])),
+            "between_event_q01_s": float(np.percentile(iot["between_event"], 1)),
+        },
+        "estimators": {
+            "mixture_crossover": mixture,
+            "kneedle_window_s": knee,
+            "cost_weighted": costs,
+            "spread_rule": spread_rule(iot),
+            "debar_wespi": debar_wespi_window(iot),
+        },
+        "rows": rows,
+    }
+
+
 def main() -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
     out = {
         "paper": "P5 Cross-modal detection fusion and multi-analytics alert deduplication",
-        "results": [e5_1_baselines(), e5_2_window_sweep(), e5_3_derived_window(), e5_4_cross_modal()],
+        "results": [
+            e5_1_baselines(),
+            e5_2_window_sweep(),
+            e5_3_derived_window(),
+            e5_4_cross_modal(),
+            e5_5_empirical_window(),
+        ],
     }
     path = RESULTS / "p5_fusion.json"
     path.write_text(json.dumps(out, indent=2))

@@ -1,3 +1,8 @@
+%% SUBMISSION NOTE. This source builds the named (non-anonymous) version,
+%% suitable for arXiv and for a camera-ready. For a double-blind submission
+%% replace the \author block with a placeholder,
+%% and re-check that no self-citation, repository URL or acknowledgement in
+%% the Reproduction section identifies the authors.
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{booktabs,hyperref,graphicx,amsmath,amssymb}
@@ -31,12 +36,18 @@ geometric quantity is not the right one: what the window must span is the interv
 between successive \emph{observations} of an entity, which includes revisits and
 re-detections, not the time to traverse one field of view.
 
-Measured on the operating curve, the knee sits at $15$--$30$\,s. Moving from
-$15$\,s to $120$\,s buys a further $2.8\%$ reduction in alerts and costs $337$
-additional masked incidents, taking distinct-incident recall from $0.9961$ to
-$0.9680$. We give the corrected procedure: choose $W$ from the
-inter-observation-time distribution by a cost-weighted operating point, with
-\citet{satopaa2011kneedle} as the parameter-free default. Separately, we confirm
+We then supply the replacement rather than stopping at the refutation. On a
+24-point sweep the two-sided error curve has its knee at $8$--$10$\,s, and four
+independent estimators --- a Debar--Wespi quantile rule, Kneedle, an explicit
+cost minimisation and a $\max + 2\sigma$ heuristic --- all return a window
+between $6.6$ and $10.0$\,s. The cost-weighted estimator is unchanged at $8$\,s
+as the price of a masked incident moves from $10\times$ to $100\times$ the price
+of a redundant alert. \textbf{We recommend $W = 10$\,s} for this estate:
+$99.73\%$ distinct-incident recall at $0.0005$ redundant alerts per incident,
+against the deployed $120$\,s which costs eleven times as many masked incidents
+for $0.6$ percentage points more suppression. A fifth estimator, the
+two-component mixture crossover, fails on this data, and we report the failure
+and its diagnosis rather than dropping it. Separately, we confirm
 that an entity-keyed predicate spanning modalities beats per-modality
 deduplication by $10.5\%$ to $43.5\%$ as the dual-tagged incident share rises from
 $0.15$ to $1.0$, at no recall cost, and that a confidence-voting alternative
@@ -84,9 +95,11 @@ its first sentence.
 
 Claimed: (i) the geometric derivation of $W$ is refuted by the estate's own
 geometry, quantitatively (\S\ref{sec:refute}); (ii) the measured knee is
-$15$--$30$\,s and the deployed value sits far past it, with the cost quantified
-(\S\ref{sec:eval}); (iii) a defensible replacement procedure for choosing $W$
-(\S\ref{sec:choose}); (iv) the cross-modal entity-keyed predicate's marginal value
+$8$--$10$\,s and the deployed value sits an order of magnitude past it, with the
+cost quantified (\S\ref{sec:empirical}); (iii) a replacement procedure for
+choosing $W$, four estimators that implement it, agreement between them to
+within $3.4$\,s, and a diagnosis of the one that fails
+(\S\ref{sec:choose},~\S\ref{sec:empirical}); (iv) the cross-modal entity-keyed predicate's marginal value
 over per-modality deduplication, measured against the dual-tagging rate
 (\S\ref{sec:crossmodal}).
 
@@ -205,6 +218,180 @@ where a regulator states the delay bound.
 
 All four are defensible. Dividing a distance by a speed is not one of them.
 
+\section{An empirical window model}
+\label{sec:empirical}
+
+Refuting the geometric derivation is half a contribution. This section supplies
+the replacement: the two-sided error curve at the resolution the decision
+actually needs, four estimators that read a window off it, and the one that
+fails.
+
+\subsection{The inter-observation time distribution}
+
+The quantity every estimator works from is the inter-observation time: the gap
+between consecutive observations sharing an entity key. Over $12{,}000$
+incidents and $59{,}984$ detections there are $51{,}413$ such gaps, of which
+$47{,}957$ fall inside one operational event and $3{,}456$ separate distinct
+events involving the same entity.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lrr}
+\toprule
+& \textbf{Within event} & \textbf{Between events} \\
+\midrule
+Count & 47{,}957 & 3{,}456 \\
+Median & 0.40\,s & 402.46\,s \\
+1st percentile & --- & 1.05\,s \\
+99th percentile & 3.30\,s & --- \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Inter-observation times (\synth).} The two populations are
+three orders of magnitude apart at the median and overlap in the tails: the
+lowest percentile of between-event gaps ($1.05$\,s) sits below the $99$th
+percentile of within-event gaps ($3.30$\,s). That overlap is what makes the
+window a trade-off rather than a threshold, and it is what defeats one of the
+four estimators below.}
+\label{tab:iot}
+\end{table}
+
+A deployment does not observe this split. It observes the pooled column and has
+to infer the separation, which is what the mixture estimator attempts.
+
+\subsection{The operating curve, at usable resolution}
+\label{sec:curve}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{rrrrr}
+\toprule
+\textbf{$W$ (s)} & \textbf{Alerts} & \textbf{Suppression} & \textbf{Redundant / incident} & \textbf{Masked / incident} \\
+\midrule
+2   & 19{,}826 & 66.9\% & 0.6537 & 0.0015 \\
+3   & 15{,}849 & 73.6\% & 0.3221 & 0.0013 \\
+5   & 12{,}962 & 78.4\% & 0.0818 & 0.0016 \\
+\textbf{8}  & \textbf{12{,}029} & \textbf{79.9\%} & \textbf{0.0047} & \textbf{0.0022} \\
+\textbf{10} & \textbf{11{,}974} & \textbf{80.0\%} & \textbf{0.0005} & \textbf{0.0027} \\
+15  & 11{,}961 & 80.1\% & 0.0007 & 0.0039 \\
+30  & 11{,}915 & 80.1\% & 0.0002 & 0.0073 \\
+60  & 11{,}844 & 80.3\% & 0.0007 & 0.0137 \\
+120 & 11{,}626 & 80.6\% & 0.0008 & 0.0320 \\
+240 & 11{,}105 & 81.5\% & 0.0008 & 0.0753 \\
+900 & 9{,}288  & 84.5\% & 0.0003 & 0.2263 \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Two-sided error against $W$ (\synth, selected rows of a
+24-point sweep).} Redundant alerts collapse by $W \approx 10$\,s and masked
+incidents grow without bound after it. Everything past $10$\,s is bought
+entirely from recall.}
+\label{tab:curve}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{../figs/p5_empirical_window.png}
+\caption{\textbf{The operating curve and where each estimator lands (\synth).}
+The false-positive and false-negative curves cross between $8$ and $10$\,s, and
+four independent estimators fall inside that crossing. The deployed $120$\,s
+sits an order of magnitude to its right, on the flat part of one curve and the
+rising part of the other.}
+\label{fig:window}
+\end{figure}
+
+\textbf{This supersedes the coarse estimate.} An earlier sweep over
+$\{0,5,15,30,60,120,\dots\}$ placed the knee at $15$--$30$\,s. That sweep had no
+sample point between $5$ and $15$\,s, and the knee is inside that gap. At the
+resolution of Table~\ref{tab:curve} the redundant-alert rate falls from
+$0.0818$ at $5$\,s to $0.0047$ at $8$\,s and $0.0005$ at $10$\,s, a factor of
+$160$ over five seconds, while masked incidents move from $0.0016$ to $0.0027$.
+The knee is at $8$--$10$\,s, not $15$--$30$\,s. We record the correction rather
+than quietly restating the number, because it is the same class of error as the
+one the paper is about: a window quoted more precisely than the evidence
+supported it.
+
+\subsection{Four estimators}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{llr}
+\toprule
+\textbf{Estimator} & \textbf{Basis} & \textbf{$W$ (s)} \\
+\midrule
+Debar--Wespi style & $2 \times$ 99th percentile of within-event gaps & 6.59 \\
+Kneedle & max distance from the chord of the suppression curve & 8.00 \\
+Cost-weighted, $\lambda_m/\lambda_r = 10$ & $\arg\min\ \lambda_r \mathrm{FP} + \lambda_m \mathrm{FN}$ & 8.00 \\
+Cost-weighted, $\lambda_m/\lambda_r = 100$ & as above & 8.00 \\
+Cost-weighted, $\lambda_m/\lambda_r = 1$ & as above & 10.00 \\
+Spread rule & $\max + 2\sigma$ of within-event gaps & 9.38 \\
+\midrule
+Mixture crossover & posterior crossover of a 2-component fit & \textbf{fails} \\
+\midrule
+\emph{Deployed} & FOV depth / permitted speed & \emph{120} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Estimators of $W$ (\synth).} Every estimator that returns a
+value returns one between $6.6$ and $10$\,s. The deployed constant is $12$ to
+$18$ times larger.}
+\label{tab:estimators}
+\end{table}
+
+The agreement is the result. Four methods with different assumptions --- a
+quantile rule from the intrusion-detection literature, a parameter-free
+geometric criterion on the curve, an explicit cost minimisation, and a plain
+engineering heuristic --- land within $3.4$ seconds of one another. The
+cost-weighted estimator is stable at $8$\,s as the ratio $\lambda_m/\lambda_r$
+moves from $10$ to $100$, and moves only to $10$\,s when a masked incident and a
+redundant alert are priced equally. A conclusion that survives a hundredfold
+change in the cost ratio is not a conclusion about the cost ratio.
+
+\textbf{We recommend $W = 10$\,s for this estate}, taking the upper end of the
+agreement band because masked incidents are the error our operators cannot
+detect and redundant alerts are the error they can. At $10$\,s the deployment
+emits $11{,}974$ alerts against $59{,}984$ detections, retains
+$99.73\%$ distinct-incident recall, and carries $0.0005$ redundant alerts per
+incident: one operator-visible duplicate per two thousand incidents.
+
+\subsection{The estimator that fails, and why}
+
+The mixture crossover is the most principled of the four and the only one that
+returns nothing usable. Fitting a two-component log-normal mixture to the pooled
+gaps by EM converges stably, from every initialisation we tried, to a short
+component with median $0.37$\,s and $\sigma_{\log} = 1.11$ and a second
+component with median $4.17$\,s and $\sigma_{\log} = 4.68$. The second component
+is not the revisit population. It is a broad component that has absorbed the
+right tail of the within-event population, and because it is broad it also
+outweighs the short component in the far left tail, so the unconstrained
+posterior crossover degenerates towards zero. Constraining the search to lie
+between the two component medians returns no crossover at all, because the short
+component dominates throughout that interval.
+
+The cause is visible in Table~\ref{tab:iot}. Within-event gaps are bounded by
+per-camera dwell, which itself ranges over $1.27$--$9.63$\,s across the estate,
+so the within-event population is a mixture in its own right, and a
+two-component model spends its second component on that heterogeneity rather
+than on revisits. We report the diagnostic (\texttt{components\_separated =
+false}) alongside the fit so a deployment can tell the difference between a
+crossover it should trust and one it should not, and we would use a per-camera
+fit or a three-component model before trusting this estimator on a real trace.
+
+The practical lesson is the one we would give a practitioner: prefer the
+estimators that read the error curve directly. Kneedle and the cost-weighted
+minimum work on the quantity the deployment cares about and cannot be defeated
+by the shape of a latent-variable fit.
+
+\subsection{Sensitivity}
+
+The recommendation is not sensitive to the choice within its band and is very
+sensitive outside it. Moving from $10$\,s to $8$\,s costs $0.0042$ redundant
+alerts per incident and buys $0.0005$ recall; moving from $10$\,s to the
+deployed $120$\,s costs $0.029$ recall --- a factor of eleven more masked
+incidents --- and buys $0.6$ percentage points of suppression. Moving to
+$900$\,s costs $22.6\%$ of distinct incidents. The curve is flat to the left of
+the knee in the quantity that matters and steep to the right of it, which is why
+an estimator that errs low is safer than one that errs high, and why we would
+rather a deployment take $6.6$\,s from the Debar--Wespi rule than $120$\,s from
+a geometric argument.
+
 \section{Evaluation}
 \label{sec:eval}
 
@@ -250,9 +437,11 @@ incidents for a reduction an operator would not notice. At $1{,}800$\,s the trad
 is grotesque --- $85.0\%$ reduction against $0.7510$ recall --- but the shape of the
 curve is already established by $120$\,s.
 
-\citet{satopaa2011kneedle} applied to the (reduction, masking) curve returns a knee
-in $15$--$30$\,s, which is where we recommend the deployment move, subject to the
-cost weighting in \S\ref{sec:choose}.
+This coarse sweep has no sample point between $5$ and $15$\,s.
+Section~\ref{sec:empirical} repeats it at 24 points and locates the knee at
+$8$--$10$\,s, inside that gap; the recommendation is $W = 10$\,s and the
+numbers in this table should be read against Table~\ref{tab:curve}, which
+supersedes them.
 
 \subsection{Cross-modal collapse against per-modality deduplication}
 \label{sec:crossmodal}
@@ -328,7 +517,10 @@ seconds apart are one incident or two is an operator judgement, and the whole
 curve in Table~\ref{tab:sweep} depends on that judgement. The replication that
 matters is operator-marked incident boundaries on real footage; if operators mark
 a longer typical event than our generator, the knee moves right and $120$\,s may
-be defensible on grounds we did not test. The geometric refutation in
+be defensible on grounds we did not test. The estimators in
+\S\ref{sec:empirical} are the part of this paper that transfers regardless: they
+consume an inter-observation-time column and an incident label, both of which a
+real deployment can produce. The geometric refutation in
 \S\ref{sec:refute} does not depend on this, since it compares the deployment
 against its own stated rule.
 \item \textbf{Anchored semantics.} Under merging semantics all of these numbers
@@ -349,11 +541,14 @@ The collapse predicate is not new and we do not claim it. Its window is the
 parameter that decides whether it helps, and the derivation our deployment used
 for that window --- field-of-view depth over permitted speed --- is refuted by the
 estate's own camera parameters at all $200$ cameras, by a factor of $12$ to $94$,
-and is measuring the wrong quantity besides. On the operating curve the knee is at
-$15$--$30$\,s; the deployed $120$\,s pays $337$ additional masked incidents for a
-$2.8\%$ further reduction in alerts. We recommend deployments derive $W$ from the
-inter-observation-time distribution under an explicit cost weighting, publish the
-weighting, and stop deriving it from geometry.
+and is measuring the wrong quantity besides. On a 24-point operating curve the
+knee is at $8$--$10$\,s, and four independent estimators agree to within
+$3.4$\,s; the deployed $120$\,s buys $0.6$ percentage points of extra
+suppression for eleven times the masked incidents. We recommend $W = 10$\,s
+here, and more generally that deployments derive $W$ from the
+inter-observation-time distribution under an explicit cost weighting, publish
+the weighting, prefer estimators that read the error curve directly over ones
+that fit a latent mixture, and stop deriving the window from geometry.
 
 \section*{Reproduction}
 
